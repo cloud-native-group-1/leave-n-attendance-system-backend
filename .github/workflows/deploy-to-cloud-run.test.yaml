@@ -28,6 +28,14 @@ jobs:
       run: |-
         gcloud auth configure-docker '${{ vars.REGISTRY_ZONE }}-docker.pkg.dev'
 
+    - name: 'Set Up Credentials JSON'
+      id: create-json
+      uses: jsdaniell/create-json@v1.2.3
+      with:
+        name: "bucket_key.json"
+        json: ${{ secrets.BUCKET_KEY }}
+        dir: "app/"
+
     - name: 'Build Docker Image'
       run: |-
         docker build -f Dockerfile.test --tag '${{ vars.REGISTRY_ZONE }}-docker.pkg.dev/${{ secrets.GCP_PROJECT }}/${{ vars.REGISTRY_NAME }}/${{ vars.IMAGE_NAME }}:${{ github.sha }}' .
