@@ -100,8 +100,8 @@ def test_get_leave_request_detail():
     # create a leave request to get its id
     response = client.post("/api/leave-requests", json={
         "leave_type_id": 5,
-        "start_date": "2024-12-01",
-        "end_date": "2024-12-03",
+        "start_date": "2025-12-01",
+        "end_date": "2025-12-03",
         "reason": "Unit test detail",
         "proxy_user_id": 21
     }, cookies=cookie)
@@ -127,8 +127,8 @@ def test_approve_and_reject_leave_request():
     cookie_sub = login_as("carolyn50@example.com", "test")
     response = client.post("/api/leave-requests", json={
         "leave_type_id": 5,
-        "start_date": "2024-12-05",
-        "end_date": "2024-12-06",
+        "start_date": "2025-12-05",
+        "end_date": "2025-12-06",
         "reason": "Unit test approve/reject",
         "proxy_user_id": 21
     }, cookies=cookie_sub)
@@ -145,8 +145,8 @@ def test_approve_and_reject_leave_request():
     # Now create another leave request for rejection
     response = client.post("/api/leave-requests", json={
         "leave_type_id": 5,
-        "start_date": "2024-12-07",
-        "end_date": "2024-12-08",
+        "start_date": "2025-12-07",
+        "end_date": "2025-12-08",
         "reason": "Unit test reject",
         "proxy_user_id": 21
     }, cookies=cookie_sub)

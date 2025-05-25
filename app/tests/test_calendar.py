@@ -7,7 +7,7 @@ client = TestClient(app)
 def test_get_team_calendar():
     # login as manager (user id: 19)
     cookie = login_as("jessicavalentine@example.org", "test")
-    response = client.get("/api/calendar/team?year=2024&month=12", cookies=cookie)
+    response = client.get("/api/calendar/team", cookies=cookie)
     assert response.status_code == 200
     data = response.json()
     assert "year" in data
