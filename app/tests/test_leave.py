@@ -93,3 +93,70 @@ def test_list_pending_leave_requests():
     assert "leave_requests" in data
     assert isinstance(data["leave_requests"], list)
     assert "pagination" in data
+
+def test_get_leave_request_detail():
+    # login as subordinate (user id: 17)
+    cookie = login_as("carolyn50@example.com", "test")
+    # create a leave request to get its id
+    response = client.post("/api/leave-requests", json={
+        "leave_type_id": 5,
+        "start_date": "2024-12-01",
+        "end_date": "2024-12-03",
+        "reason": "Unit test detail",
+        "proxy_user_id": 21
+    }, cookies=cookie)
+    assert response.status_code == 201
+    leave_id = response.json()["id"]
+    # get leave request detail
+    response = client.get(f"/api/leave-requests/{leave_id}", cookies=cookie)
+    assert response.status_code == 200
+    data = response.json()
+    assert "id" in data
+    assert "request_id" in data
+    assert "user" in data
+    assert "leave_type" in data
+    assert "start_date" in data
+    assert "end_date" in data
+    assert "days_count" in data
+    assert "reason" in data
+    assert "status" in data
+    assert "created_at" in data
+
+def test_approve_and_reject_leave_request():
+    # login as subordinate to create a leave request
+    cookie_sub = login_as("carolyn50@example.com", "test")
+    response = client.post("/api/leave-requests", json={
+        "leave_type_id": 5,
+        "start_date": "2024-12-05",
+        "end_date": "2024-12-06",
+        "reason": "Unit test approve/reject",
+        "proxy_user_id": 21
+    }, cookies=cookie_sub)
+    assert response.status_code == 201
+    leave_id = response.json()["id"]
+    # login as manager to approve
+    cookie_mgr = login_as("jessicavalentine@example.org", "test")
+    response = client.patch(f"/api/leave-requests/{leave_id}/approve", cookies=cookie_mgr)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "approved"
+    assert "approver" in data
+    assert "approved_at" in data
+    # Now create another leave request for rejection
+    response = client.post("/api/leave-requests", json={
+        "leave_type_id": 5,
+        "start_date": "2024-12-07",
+        "end_date": "2024-12-08",
+        "reason": "Unit test reject",
+        "proxy_user_id": 21
+    }, cookies=cookie_sub)
+    assert response.status_code == 201
+    leave_id = response.json()["id"]
+    # manager rejects
+    response = client.patch(f"/api/leave-requests/{leave_id}/reject", json={"rejection_reason": "Not allowed for test"}, cookies=cookie_mgr)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "rejected"
+    assert "approver" in data
+    assert "approved_at" in data
+    assert "rejection_reason" in data
