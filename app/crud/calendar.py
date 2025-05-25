@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import extract
-from datetime import date
-from typing import List, Dict
+from datetime import date, timedelta
+from typing import List, Dict, Optional
 from ..models.leave_request import LeaveRequest, LeaveStatus
 from ..models.user import User
 from ..models.leave_type import LeaveType
@@ -11,22 +11,22 @@ from ..schemas.calendar import DayInfo, MemberOnLeave, TeamCalendarResponse
 def get_team_calendar(
     db: Session,
     team_member_ids: List[int],
-    year: int,
-    month: int
+    year: Optional[int],
+    month: Optional[int]
 ) -> TeamCalendarResponse:
-    # Get all approved leave requests for team members in the specified month
-    leave_requests = (
-        db.query(LeaveRequest)
-        .join(User, LeaveRequest.user_id == User.id)
-        .join(LeaveType, LeaveRequest.leave_type_id == LeaveType.id)
-        .filter(
-            LeaveRequest.user_id.in_(team_member_ids),
-            LeaveRequest.status == "approved",
-            extract('year', LeaveRequest.start_date) == year,
-            extract('month', LeaveRequest.start_date) == month
-        )
-        .all()
+    # Build base query for all approved leave requests for team members
+    query = db.query(LeaveRequest)
+    query = query.join(User, LeaveRequest.user_id == User.id)
+    query = query.join(LeaveType, LeaveRequest.leave_type_id == LeaveType.id)
+    query = query.filter(
+        LeaveRequest.user_id.in_(team_member_ids),
+        LeaveRequest.status == "approved"
     )
+    if year is not None:
+        query = query.filter(extract('year', LeaveRequest.start_date) == year)
+    if month is not None:
+        query = query.filter(extract('month', LeaveRequest.start_date) == month)
+    leave_requests = query.all()
 
     # Create a dictionary to store members on leave for each day
     calendar_data: Dict[date, List[MemberOnLeave]] = {}
@@ -35,10 +35,10 @@ def get_team_calendar(
     for request in leave_requests:
         current_date = request.start_date
         while current_date <= request.end_date:
-            if current_date.month == month:  # Only include dates in the specified month
+            # Only include dates in the specified month if month is provided
+            if (month is None or current_date.month == month) and (year is None or current_date.year == year):
                 if current_date not in calendar_data:
                     calendar_data[current_date] = []
-                
                 calendar_data[current_date].append(
                     MemberOnLeave(
                         id=request.user.id,
@@ -47,7 +47,7 @@ def get_team_calendar(
                         leave_type=request.leave_type.name
                     )
                 )
-            current_date = date(current_date.year, current_date.month, current_date.day + 1)
+            current_date += timedelta(days=1)
 
     # Convert the dictionary to a list of DayInfo objects
     days = [
@@ -56,7 +56,7 @@ def get_team_calendar(
     ]
 
     return TeamCalendarResponse(
-        year=year,
-        month=month,
+        year=year if year is not None else 0,
+        month=month if month is not None else 0,
         days=days
     )
