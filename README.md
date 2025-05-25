@@ -43,7 +43,7 @@ venv\Scripts\activate # windows
 pip install -r requirement.txt
 ```
 
-- Create Environment Variables
+- Create Environment Variables -> 連上GCP上的DB
 Create a `.env` file in the root directory of the project to store environment-specific variables like the database URL and secret keys.
 ```
 DATABASE_URL=postgresql://username:password@localhost:5432/yourdatabase
@@ -113,3 +113,14 @@ leave-attendance-backend/
 │   ├── env.py                       # Alembic environment file -> remember to modify database URL in this file
 └── requirements.txt                 # Project dependencies
 ```
+
+## How to run the unit test:
+```
+	export $(cat app/.env | grep -v ^# | xargs) && pytest --cov=app --cov-report=term-missing
+```
+## TODO
+
+- 下載 postgresql: https://www.postgresql.org/download/
+- 連上GCP上的DB
+- ER-D圖
+- 假資料生成操作

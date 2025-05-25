@@ -21,7 +21,7 @@ def get_team_calendar(
         .join(LeaveType, LeaveRequest.leave_type_id == LeaveType.id)
         .filter(
             LeaveRequest.user_id.in_(team_member_ids),
-            LeaveRequest.status == LeaveStatus.approved,
+            LeaveRequest.status == "approved",
             extract('year', LeaveRequest.start_date) == year,
             extract('month', LeaveRequest.start_date) == month
         )

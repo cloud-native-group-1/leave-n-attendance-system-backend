@@ -17,9 +17,28 @@ def generate_request_id():
     id = str(uuid4().hex[:16].upper())
     return id
 
+def calculate_leave_days_excluding_weekends(start_date: date, end_date: date) -> int:
+    if start_date > end_date:
+        raise ValueError("Invalid date: End_date should be after Start_day") 
+
+    total_days = (end_date - start_date).days + 1
+    full_weeks = total_days // 7
+    weekend_days = full_weeks * 2
+
+    extra_days = total_days % 7
+    start_weekday = start_date.weekday()
+
+    for i in range(extra_days):
+        if (start_weekday + i) % 7 >= 5:  # 週六或週日
+            weekend_days += 1
+
+    return total_days - weekend_days
+
+
 def create_leave_request(db: Session, user_id: int, data: LeaveRequestCreate):
     # 計算請假天數（整天制）
-    days_requested = (data.end_date - data.start_date).days + 1
+    # days_requested = (data.end_date - data.start_date).days + 1
+    days_requested = calculate_leave_days_excluding_weekends(data.start_date, data.end_date)
     current_year = datetime.now().year
     if days_requested <= 0:
         raise ValueError("Invalid date: End_date should be after Start_day") 
@@ -98,6 +117,7 @@ def get_leave_requests_for_user(
     status: Optional[str] = None,
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
+    leave_type_id: Optional[int] = None,
     page: int = 1,
     per_page: int = 10
 ):
@@ -118,6 +138,9 @@ def get_leave_requests_for_user(
 
     if end_date:
         query = query.filter(LeaveRequest.end_date <= end_date)
+        
+    if leave_type_id:
+        query = query.filter(LeaveRequest.leave_type_id == leave_type_id)
 
     total = query.count()
     results = query.order_by(LeaveRequest.start_date.desc()) \
@@ -157,13 +180,14 @@ def get_team_leave_requests(
     status: Optional[str] = None,
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
+    leave_type_id: Optional[int] = None,
     page: int = 1,
     per_page: int = 10
 ):
     if status and status not in ALLOWED_STATUSES:
         raise ValueError(f"Invalid status: '{status}'. Must be one of {ALLOWED_STATUSES}")
 
-    # get list of user_id for team member of that manaber
+    # get list of user_id for team member of that manager
     subquery = db.query(Manager.user_id).filter(Manager.manager_id == manager_id)
     team_user_ids = [row[0] for row in subquery.all()]
 
@@ -186,6 +210,8 @@ def get_team_leave_requests(
         query = query.filter(LeaveRequest.start_date >= start_date)
     if end_date:
         query = query.filter(LeaveRequest.end_date <= end_date)
+    if leave_type_id:
+        query = query.filter(LeaveRequest.leave_type_id == leave_type_id)
 
     total = query.count()
     results = query.order_by(LeaveRequest.start_date.desc()) \
@@ -226,12 +252,41 @@ def get_leave_request_by_id(db: Session, leave_request_id: int) -> LeaveRequestD
     
     return leave_request
 
+def get_user_id_from_leave_request_by_id(db: Session, leave_request_id: int) -> int:
+    leave_request = db.query(LeaveRequest.user_id).filter(LeaveRequest.id == leave_request_id).first()
+    if not leave_request:
+        raise HTTPException(status_code=404, detail="Leave request not found")
+    
+    return leave_request
+
+def get_request_id_from_leave_request_by_id(db: Session, id: int) -> int:
+    leave_request = db.query(LeaveRequest.request_id).filter(LeaveRequest.id == id).first()
+    if not leave_request:
+        raise HTTPException(status_code=404, detail="Leave request not found")
+    
+    return leave_request
+
+def get_proxy_id_from_leave_request_by_id(db: Session, leave_request_id: int) -> int:
+    leave_request = db.query(LeaveRequest.proxy_user_id).filter(LeaveRequest.id == leave_request_id).first()
+    if not leave_request:
+        raise HTTPException(status_code=404, detail="Leave request not found")
+    
+    return leave_request
+
+def get_detail_from_leave_request_by_id(db: Session, leave_request_id: int) -> int:
+    leave_request = db.query(LeaveRequest.proxy_user_id, LeaveRequest.start_date, LeaveRequest.end_date).filter(LeaveRequest.id == leave_request_id ).first()
+    if not leave_request:
+        raise HTTPException(status_code=404, detail="Leave request not found")
+    
+    return leave_request
+
 def approve_leave_request(db: Session, leave_request_id: int, approver_id: int) -> LeaveRequestApprovalResponse:
     leave_request = db.query(LeaveRequest).filter(LeaveRequest.id == leave_request_id).first()
     if not leave_request:
         raise HTTPException(status_code=404, detail="Leave request not found")
     
-    if leave_request.status != LeaveStatus.pending:
+
+    if leave_request.status != "pending":
         raise ValueError("Can only approve pending leave requests")
     
     approver = db.query(User).filter(User.id == approver_id).first()
@@ -267,7 +322,7 @@ def reject_leave_request(db: Session, leave_request_id: int, approver_id: int, r
     if not leave_request:
         raise HTTPException(status_code=404, detail="Leave request not found")
     
-    if leave_request.status != LeaveStatus.pending:
+    if leave_request.status != "pending":
         raise ValueError("Can only reject pending leave requests")
     
     approver = db.query(User).filter(User.id == approver_id).first()
@@ -283,7 +338,7 @@ def reject_leave_request(db: Session, leave_request_id: int, approver_id: int, r
     if not is_manager:
         raise PermissionError("You are not authorized to reject this leave request")
     
-    leave_request.status = LeaveStatus.rejected
+    leave_request.status = "rejected"
     leave_request.approver_id = approver_id
     leave_request.approved_at = datetime.utcnow()
     leave_request.rejection_reason = rejection_reason

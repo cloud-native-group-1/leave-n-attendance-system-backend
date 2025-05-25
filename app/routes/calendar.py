@@ -20,8 +20,8 @@ router = APIRouter(
 
 @router.get("/team", response_model=TeamCalendarResponse)
 def get_team_calendar(
-    year: int = Query(..., description="Year (e.g., 2023)"),
-    month: int = Query(..., description="Month (1-12)"),
+    year: Optional[int] = Query(..., description="Year (e.g., 2023)"),
+    month: Optional[int] = Query(..., description="Month (1-12)"),
     request: Request = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)

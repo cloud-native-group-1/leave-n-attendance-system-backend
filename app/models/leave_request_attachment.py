@@ -1,15 +1,17 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, func
-from sqlalchemy.orm import relationship
+from sqlalchemy import String, Integer, ForeignKey, TIMESTAMP, func, Text
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+from datetime import datetime
 from .base import Base
 
-class LeaveRequestAttachment(Base):
-    __tablename__ = 'leave_request_attachments'
+class LeaveAttachment(Base):
+    __tablename__ = "leave_attachments"
 
-    id = Column(Integer, primary_key=True)
-    leave_request_id = Column(Integer, ForeignKey('leave_requests.id'), nullable=False)
-    file_name = Column(String(255))
-    file_type = Column(String(50))
-    file_size = Column(Integer)
-    uploaded_at = Column(DateTime, server_default=func.now())
+    id: Mapped[int] = mapped_column(primary_key=True)
+    leave_request_id: Mapped[int] = mapped_column(ForeignKey("leave_requests.id"), nullable=False)
+    file_name: Mapped[str] = mapped_column(Text, nullable=False)
+    file_path: Mapped[str] = mapped_column(Text, nullable=False)
+    file_type: Mapped[str] = mapped_column(String(100), nullable=False)
+    file_size: Mapped[int] = mapped_column(Integer, nullable=False)
+    uploaded_at: Mapped[datetime] = mapped_column(TIMESTAMP, server_default=func.now(), nullable=False)
 
-    leave_request = relationship('LeaveRequest', back_populates='attachments')
+    leave_request: Mapped["LeaveRequest"] = relationship("LeaveRequest", back_populates="attachments")

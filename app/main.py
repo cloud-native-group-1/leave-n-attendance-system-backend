@@ -13,6 +13,8 @@ from .routes import leave_balance
 from .routes import leave
 from .routes import calendar
 from .routes import notification
+from .routes import leave_type
+from .routes import leave_attachment
 
 
 # 配置更好的日誌記錄系統
@@ -113,6 +115,8 @@ app.include_router(leave.router)
 app.include_router(leave_balance.router)
 app.include_router(calendar.router)
 app.include_router(notification.router)
+app.include_router(leave_type.router)
+app.include_router(leave_attachment.router)
 
 
 # Create database tables
@@ -121,6 +125,7 @@ def create_tables():
     print("Creating database tables...")
     Base.metadata.create_all(bind=engine)
     print("Database tables created successfully!")
+
 
 @app.get("/")
 def read_root():

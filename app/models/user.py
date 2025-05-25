@@ -1,40 +1,39 @@
-from sqlalchemy import Column, Integer, String, Boolean, Date, ForeignKey
-from sqlalchemy.orm import relationship
+from sqlalchemy import String, Boolean, Date, Integer, ForeignKey, TIMESTAMP, func
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+from datetime import datetime, date
+from typing import Optional
 from .base import Base
+from .manager import Manager
+from .leave_request import LeaveRequest
+from .department import Department
+from .notification import Notification
+from .audit_log import AuditLog
+from .leave_quota import LeaveQuota
+
 
 class User(Base):
-    __tablename__ = 'users'
+    __tablename__ = "users"
 
-    id = Column(Integer, primary_key=True)
-    employee_id = Column(String(50), nullable=False, unique=True)
-    first_name = Column(String(50), nullable=False)
-    last_name = Column(String(50), nullable=False)
-    email = Column(String(120), nullable=False, unique=True)
-    password_hash = Column(String(128), nullable=False)
-    department_id = Column(Integer, ForeignKey('departments.id'), nullable=False)
-    position = Column(String(100))
-    hire_date = Column(Date)
-    is_manager = Column(Boolean, default=False)
-
-    # relationships
-    department = relationship('Department', back_populates='users')
-    subordinate_relations = relationship('Manager', foreign_keys='Manager.user_id', back_populates='user')
-    manager_relations = relationship('Manager', foreign_keys='Manager.manager_id', back_populates='manager')
-    # 1對多關聯：一個User可以有多個LeaveQuota
-    leave_quotas = relationship('LeaveQuota', back_populates='user')
-    # 1對多關聯：一個User可以有多個LeaveRequest
-    leave_requests = relationship(
-        "LeaveRequest",
-        back_populates="user",  # 反向關聯
-        foreign_keys="[LeaveRequest.user_id]",  # 指定應該使用哪個外鍵
-        cascade="all, delete-orphan",
-    )
-
-    # 1對多關聯：一個User可以有多個LeaveRequest作為審核者
-    leave_requests_as_approver = relationship(
-        "LeaveRequest",
-        back_populates="approver",  # 反向關聯
-        foreign_keys="[LeaveRequest.approver_id]",  # 指定應該使用哪個外鍵
-        cascade="all, delete-orphan",
-    )
-    notifications = relationship('Notification', back_populates='user')
+    id: Mapped[int] = mapped_column(primary_key=True)
+    employee_id: Mapped[str] = mapped_column(String(20), unique=True, nullable=False)
+    first_name: Mapped[str] = mapped_column(String(50), nullable=False)
+    last_name: Mapped[str] = mapped_column(String(50), nullable=False)
+    email: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
+    password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    department_id: Mapped[int] = mapped_column(Integer, ForeignKey("departments.id", ondelete="SET NULL"), nullable=True)
+    position: Mapped[str] = mapped_column(String(100), nullable=False)
+    hire_date: Mapped[date] = mapped_column(Date, nullable=False)
+    is_manager: Mapped[bool] = mapped_column(Boolean, server_default="False", nullable=False)
+    created_at: Mapped[datetime] = mapped_column(TIMESTAMP, server_default=func.now(), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(TIMESTAMP, server_default=func.now(), onupdate=func.now(), nullable=False)
+    
+    department: Mapped["Department"] = relationship("Department", back_populates="users")
+    leave_requests: Mapped[list["LeaveRequest"]] = relationship("LeaveRequest", back_populates="user", foreign_keys=LeaveRequest.user_id)
+    proxy_requests: Mapped[list["LeaveRequest"]] = relationship("LeaveRequest", back_populates="proxy_user", foreign_keys=LeaveRequest.proxy_user_id)
+    approvals: Mapped[list["LeaveRequest"]] = relationship("LeaveRequest", back_populates="approver", foreign_keys=LeaveRequest.approver_id)
+    notifications: Mapped[list["Notification"]] = relationship("Notification", back_populates="user")
+    audit_logs: Mapped[list["AuditLog"]] = relationship("AuditLog", back_populates="user")
+    
+    leave_quotas: Mapped[list["LeaveQuota"]] = relationship("LeaveQuota", back_populates="user")
+    manager_relations: Mapped[list["Manager"]] = relationship("Manager", back_populates="user", foreign_keys=[Manager.user_id])
+    subordinate_relations: Mapped[list["Manager"]] = relationship("Manager", back_populates="manager", foreign_keys=[Manager.manager_id])

@@ -40,3 +40,35 @@
 - endDate (optional): Filter by end date
 - page: Which page you want to get
 - per_page: How many entries per page
+
+## GET /api/users/subordinates
+- formerly know as `GET /api/users/team`
+- Used for manager to get his / her subordinates
+- To reduce ambiguity, we change the API name
+
+## GET /api/users/team
+- Used for GENERAL user to get his / her teammates
+### Response (200 OK)
+- Same as `GET /api/users/subordinates`
+```json
+{
+  "team_members": [
+    {
+      "id": 3,
+      "employee_id": "EMP003",
+      "first_name": "Alice",
+      "last_name": "Johnson",
+      "position": "Junior Developer",
+      "email": "alice.johnson@example.com"
+    },
+    {
+      "id": 4,
+      "employee_id": "EMP004",
+      "first_name": "Bob",
+      "last_name": "Smith",
+      "position": "Senior Developer",
+      "email": "bob.smith@example.com"
+    }
+  ]
+}
+```

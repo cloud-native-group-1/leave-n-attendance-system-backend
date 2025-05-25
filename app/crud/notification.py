@@ -94,3 +94,22 @@ def mark_all_notifications_as_read(
         message="All notifications marked as read",
         count=result
     )
+
+def create_notifications(
+        db: Session,
+        receiver_id: int,
+        title: str,
+        message: str,
+        leave_request_id: int
+):
+    new_notification = Notification(
+        user_id = receiver_id,
+        title = title,
+        message = message,
+        related_to = "leave_request",
+        related_id = leave_request_id,
+        is_read = False
+    ) 
+    db.add(new_notification)
+    db.commit()
+    db.refresh(new_notification)

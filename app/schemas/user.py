@@ -54,6 +54,7 @@ class TeamMemberOut(BaseModel):
     last_name: str
     position: str
     email: str
+    department: DepartmentOut
 
 class TeamListResponse(BaseModel):
     team_members: List[TeamMemberOut]

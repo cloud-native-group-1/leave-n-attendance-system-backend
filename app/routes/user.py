@@ -69,17 +69,17 @@ def get_my_profile(request: Request, current_user: User = Depends(get_current_us
     logger.info(f"Successfully returned profile for user {current_user.email} (ID: {user_id})")
     return result
 
-
 @router.get("/team", response_model=TeamListResponse)
-def get_my_team(request: Request, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def get_teammate(request: Request, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """
+    Get teammate of the user
+    """
     client_ip = request.client.host
     logger.info(f"User {current_user.email} (ID: {current_user.id}) requesting team list from {client_ip}")
     
-    if not current_user.is_manager:
-        logger.warning(f"Non-manager user {current_user.email} (ID: {current_user.id}) attempted to access team list")
-        raise HTTPException(status_code=403, detail="Only managers can access this resource.")
-    
-    members = user_crud.get_team_members(db, current_user.id)
+    manager_id = user_crud.get_manager_id(db, current_user.id)
+
+    members = user_crud.get_team_members(db, manager_id, current_user.id)
     
     # 記錄團隊成員信息，但避免記錄敏感信息
     member_count = len(members) if members else 0
@@ -90,3 +90,97 @@ def get_my_team(request: Request, current_user: User = Depends(get_current_user)
     
     logger.info(f"Successfully returned team list with {member_count} members for manager {current_user.email}")
     return {"team_members": members}
+
+
+@router.get("/subordinates", response_model=TeamListResponse)
+def get_subordinates(request: Request, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """
+    Get subordinates of the manager
+    """
+    client_ip = request.client.host
+    logger.info(f"User {current_user.email} (ID: {current_user.id}) requesting list of subordinates from {client_ip}")
+    
+    if not current_user.is_manager:
+        logger.warning(f"Non-manager user {current_user.email} (ID: {current_user.id}) attempted to access team list")
+        raise HTTPException(status_code=403, detail="Only managers can access this resource.")
+    
+    members = user_crud.get_team_members(db, current_user.id, current_user.id)
+    
+    # 記錄團隊成員信息，但避免記錄敏感信息
+    member_count = len(members) if members else 0
+    logger.debug(f"Found {member_count} team members for manager {current_user.id}")
+    if members:
+        member_ids = [str(m.id) for m in members]
+        logger.debug(f"Team member IDs: {', '.join(member_ids)}")
+    
+    logger.info(f"Successfully returned team list with {member_count} members for manager {current_user.email}")
+    
+    # Transform members to include department_name
+    team_members = [
+        {
+            "id": member.id,
+            "employee_id": member.employee_id,
+            "first_name": member.first_name,
+            "last_name": member.last_name,
+            "position": member.position,
+            "email": member.email,
+            "department": {
+                "id": member.department.id,
+                "name": member.department.name
+            }
+        }
+        for member in members
+    ]
+    
+    return {"team_members": team_members}
+
+@router.get("/{user_id}", response_model=UserOut)
+def get_user_by_id(user_id: int, request: Request, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    client_ip = request.client.host
+    logger.info(f"User {current_user.email} (ID: {current_user.id}) requesting user profile for ID: {user_id} from {client_ip}")
+    
+    user = user_crud.get_user_by_id(db, user_id)
+    if not user:
+        logger.warning(f"User with ID {user_id} not found")
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    department_id = user.department_id
+    
+    # 處理 manager
+    manager_id = user_crud.get_manager_id(db, user_id)
+    manager_dict = None
+    if manager_id is not None:
+        manager = user_crud.get_manager(db, manager_id)
+        if manager:
+            manager_dict = {
+                "id": manager.id,
+                "first_name": manager.first_name,
+                "last_name": manager.last_name
+            }
+    
+    # 處理 department
+    department_dict = None
+    if department_id is not None:
+        department = user_crud.get_department(db, department_id)
+        if department:
+            department_dict = {
+                "id": department.id,
+                "name": department.name
+            }
+    
+    # 構建結果
+    result = {
+        "id": user_id,
+        "employee_id": user.employee_id,
+        "first_name": user.first_name,
+        "last_name": user.last_name,
+        "email": user.email,
+        "department": department_dict,
+        "position": user.position,
+        "manager": manager_dict,
+        "hire_date": str(user.hire_date),
+        "is_manager": user.is_manager
+    }
+    
+    logger.info(f"Successfully returned profile for user ID: {user_id}")
+    return result
