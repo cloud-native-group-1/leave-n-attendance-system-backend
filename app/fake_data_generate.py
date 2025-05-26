@@ -19,6 +19,8 @@ from database import SessionLocal
 
 fake = Faker()
 
+user_names = []
+
 def generate_fake_departments(db: Session, num_departments: int = 5):
     print("Clearing existing departments...")
     db.query(Department).delete()  # 清空 leave_quota 表格資料
