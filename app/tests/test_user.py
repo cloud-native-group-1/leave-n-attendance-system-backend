@@ -1,6 +1,7 @@
 from fastapi.testclient import TestClient
 from app.main import app
 
+
 client = TestClient(app)
 
 def login_as(username: str, password: str):
