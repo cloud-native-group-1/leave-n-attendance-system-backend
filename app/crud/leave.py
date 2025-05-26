@@ -242,18 +242,44 @@ def get_team_leave_requests(
     }
 
 def get_leave_request_by_id(db: Session, leave_request_id: int) -> LeaveRequestDetail:
-    # Use eager loading with joinedload to fetch related data in one query
-    leave_request = db.query(LeaveRequest).options(
-        joinedload(LeaveRequest.user),
-        joinedload(LeaveRequest.leave_type),
-        joinedload(LeaveRequest.proxy_user),
-        joinedload(LeaveRequest.approver)
-    ).filter(LeaveRequest.id == leave_request_id).first()
-    
+    leave_request = db.query(LeaveRequest).filter(LeaveRequest.id == leave_request_id).first()
     if not leave_request:
         raise HTTPException(status_code=404, detail="Leave request not found")
-    
-    return leave_request
+
+    from app.schemas.leave import LeaveRequestDetail, UserBase, LeaveTypeBase
+    return LeaveRequestDetail(
+        id=leave_request.id,
+        request_id=leave_request.request_id,
+        user=UserBase(
+            id=leave_request.user.id,
+            first_name=leave_request.user.first_name,
+            last_name=leave_request.user.last_name,
+            employee_id=leave_request.user.employee_id
+        ),
+        leave_type=LeaveTypeBase(
+            id=leave_request.leave_type.id,
+            name=leave_request.leave_type.name
+        ),
+        start_date=leave_request.start_date,
+        end_date=leave_request.end_date,
+        days_count=leave_request.days_count,
+        reason=leave_request.reason,
+        status=leave_request.status,
+        proxy_person=UserBase(
+            id=leave_request.proxy_user.id,
+            first_name=leave_request.proxy_user.first_name,
+            last_name=leave_request.proxy_user.last_name,
+            employee_id=leave_request.proxy_user.employee_id
+        ) if leave_request.proxy_user else None,
+        approver=UserBase(
+            id=leave_request.approver.id,
+            first_name=leave_request.approver.first_name,
+            last_name=leave_request.approver.last_name,
+            employee_id=leave_request.approver.employee_id
+        ) if leave_request.approver else None,
+        approved_at=leave_request.approved_at,
+        created_at=leave_request.created_at
+    )
 
 def get_user_id_from_leave_request_by_id(db: Session, leave_request_id: int) -> int:
     leave_request = db.query(LeaveRequest.user_id).filter(LeaveRequest.id == leave_request_id).first()

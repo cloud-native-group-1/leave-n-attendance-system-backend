@@ -1,6 +1,7 @@
 from fastapi.testclient import TestClient
 from app.main import app
 
+
 client = TestClient(app)
 
 def login_as(username: str, password: str):
@@ -22,8 +23,8 @@ def test_get_my_profile():
         "last_name": "Burton",
         "email": "jessicavalentine@example.org",
         "department": {
-            "id": 6,
-            "name": "Scott, Castillo and Mccann"
+            "id": 14,
+            "name": "CI用測試"
         },
         "position": "Hydrogeologist",
         "is_manager": True,
@@ -41,15 +42,21 @@ def test_get_my_profile():
         "last_name": "Ware",
         "email": "carolyn50@example.com",
         "department": {
-            "id": 6,
-            "name": "Scott, Castillo and Mccann"
+            "id": 14,
+            "name": "CI用測試"
         },
         "position": "Press photographer",
         "is_manager": False,
         "manager": {
             "id": 19,
             "first_name": "Scott",
-            "last_name": "Burton"
+            "last_name": "Burton",
+            "email": "jessicavalentine@example.org",
+            "department": {
+            "id": 14,
+            "name": "CI用測試"
+            },
+            "position": "Hydrogeologist"
         },
         "hire_date": "2023-07-16"
     }
@@ -70,8 +77,8 @@ def test_get_teammate():
             "position": "Press photographer",
             "email": "carolyn50@example.com",
             "department": {
-                "id": 6,
-                "name": "Scott, Castillo and Mccann"
+                "id": 14,
+                "name": "CI用測試"
             }
             },
             {
@@ -82,8 +89,8 @@ def test_get_teammate():
             "position": "Water quality scientist",
             "email": "coxlaurie@example.com",
             "department": {
-                "id": 10,
-                "name": "Hurley, Marshall and Rodgers"
+                "id": 14,
+                "name": "CI用測試"
             }
             }
         ]
@@ -104,8 +111,8 @@ def test_get_subordinates():
             "position": "Press photographer",
             "email": "carolyn50@example.com",
             "department": {
-                "id": 6,
-                "name": "Scott, Castillo and Mccann"
+                "id": 14,
+                "name": "CI用測試"
             }
             },
             {
@@ -116,8 +123,8 @@ def test_get_subordinates():
             "position": "Water quality scientist",
             "email": "coxlaurie@example.com",
             "department": {
-                "id": 10,
-                "name": "Hurley, Marshall and Rodgers"
+                "id": 14,
+                "name": "CI用測試"
             }
             }
         ]
@@ -139,15 +146,21 @@ def test_get_user_by_id():
         "last_name": "Ware",
         "email": "carolyn50@example.com",
         "department": {
-            "id": 6,
-            "name": "Scott, Castillo and Mccann"
+            "id": 14,
+            "name": "CI用測試"
         },
         "position": "Press photographer",
         "is_manager": False,
         "manager": {
             "id": 19,
             "first_name": "Scott",
-            "last_name": "Burton"
+            "last_name": "Burton",
+            "email": "jessicavalentine@example.org",
+            "department": {
+            "id": 14,
+            "name": "CI用測試"
+            },
+            "position": "Hydrogeologist"
         },
         "hire_date": "2023-07-16"
     }
