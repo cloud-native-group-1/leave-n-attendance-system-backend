@@ -160,3 +160,81 @@ def test_approve_and_reject_leave_request():
     assert "approver" in data
     assert "approved_at" in data
     assert "rejection_reason" in data
+
+def test_request_leave_invalid_leave_type():
+    cookie = login_as("carolyn50@example.com", "test")
+    response = client.post("/api/leave-requests", json={
+        "leave_type_id": 99999,
+        "start_date": "2025-12-01",
+        "end_date": "2025-12-03",
+        "reason": "Invalid leave type",
+        "proxy_user_id": 21
+    }, cookies=cookie)
+    assert response.status_code == 400
+
+def test_request_leave_invalid_proxy():
+    cookie = login_as("carolyn50@example.com", "test")
+    response = client.post("/api/leave-requests", json={
+        "leave_type_id": 5,
+        "start_date": "2025-12-01",
+        "end_date": "2025-12-03",
+        "reason": "Invalid proxy",
+        "proxy_user_id": 99999
+    }, cookies=cookie)
+    assert response.status_code == 400
+
+def test_list_my_leave_requests_invalid_status():
+    cookie = login_as("carolyn50@example.com", "test")
+    response = client.get("/api/leave-requests?status=notastatus", cookies=cookie)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["pagination"]["total"] == 0
+
+def test_list_my_leave_requests_invalid_page():
+    cookie = login_as("carolyn50@example.com", "test")
+    response = client.get("/api/leave-requests?page=-1", cookies=cookie)
+    assert response.status_code == 200
+
+def test_list_team_leave_requests_non_manager():
+    cookie = login_as("carolyn50@example.com", "test")
+    response = client.get("/api/leave-requests/team", cookies=cookie)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["pagination"]["total"] == 0
+
+def test_list_team_leave_requests_invalid_user():
+    cookie = login_as("jessicavalentine@example.org", "test")
+    response = client.get("/api/leave-requests/team?user_id=99999", cookies=cookie)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["pagination"]["total"] == 0
+
+def test_list_pending_leave_requests_non_manager():
+    cookie = login_as("carolyn50@example.com", "test")
+    response = client.get("/api/leave-requests/pending", cookies=cookie)
+    assert response.status_code == 403
+
+def test_get_leave_request_details_not_found():
+    cookie = login_as("carolyn50@example.com", "test")
+    response = client.get("/api/leave-requests/999999", cookies=cookie)
+    assert response.status_code in (404, 500)
+
+def test_approve_leave_request_permission():
+    cookie = login_as("carolyn50@example.com", "test")  # Not a manager
+    response = client.patch("/api/leave-requests/1/approve", cookies=cookie)
+    assert response.status_code in (403, 400, 404)
+
+def test_reject_leave_request_permission():
+    cookie = login_as("carolyn50@example.com", "test")  # Not a manager
+    response = client.patch("/api/leave-requests/1/reject", json={"rejection_reason": "No"}, cookies=cookie)
+    assert response.status_code in (403, 400, 404)
+
+def test_reject_leave_request_not_found():
+    cookie = login_as("jessicavalentine@example.org", "test")
+    response = client.patch("/api/leave-requests/999999/reject", json={"rejection_reason": "No"}, cookies=cookie)
+    assert response.status_code in (404, 500)
+
+def test_approve_leave_request_not_found():
+    cookie = login_as("jessicavalentine@example.org", "test")
+    response = client.patch("/api/leave-requests/999999/approve", cookies=cookie)
+    assert response.status_code in (404, 500)
