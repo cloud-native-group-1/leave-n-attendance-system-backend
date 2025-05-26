@@ -10,7 +10,7 @@ on:
 
 jobs:
   test:
-    name: Run Unit Tests
+    name: Run Integration Tests
     runs-on: ubuntu-latest
     environment: test
 
@@ -51,7 +51,15 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirement.txt
 
-      - name: Run Unit Test
+      - name: 'Set Up Credentials JSON'
+        id: create-json
+        uses: jsdaniell/create-json@v1.2.3
+        with:
+          name: "bucket_key.json"
+          json: ${{ secrets.BUCKET_KEY }}
+          dir: "app/"
+
+      - name: Run Integration Test
         env:
           DATABASE_URL: ${{ secrets.TEST_DATABASE_URL }}
         run: |

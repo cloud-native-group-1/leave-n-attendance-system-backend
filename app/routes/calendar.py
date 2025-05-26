@@ -20,8 +20,8 @@ router = APIRouter(
 
 @router.get("/team", response_model=TeamCalendarResponse)
 def get_team_calendar(
-    year: Optional[int] = Query(..., description="Year (e.g., 2023)"),
-    month: Optional[int] = Query(..., description="Month (1-12)"),
+    year: Optional[int] = Query(None, description="Year (e.g., 2023)"),
+    month: Optional[int] = Query(None, description="Month (1-12)"),
     request: Request = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -34,12 +34,16 @@ def get_team_calendar(
     
     try:
         # Validate month
-        if not 1 <= month <= 12:
+        if month is not None and not 1 <= month <= 12:
             raise ValueError("Month must be between 1 and 12")
         
-        # Get team members - this already uses joinedload in the CRUD function
-        team_members = user_crud.get_team_members(db, current_user.id)
-        team_member_ids = [member.id for member in team_members]
+        # Get team members
+        manager_id = user_crud.get_manager_id(db, current_user.id)
+        team_members = user_crud.get_team_members(db, manager_id, current_user.id)
+        team_member_ids = [str(member.id) for member in team_members]
+        
+        member_count = len(team_members) if team_members else 0
+        logger.debug(f"Found {member_count} team members for manager {current_user.id}")
         
         # Get calendar data - this already uses joinedload in the CRUD function
         calendar_data = calendar_crud.get_team_calendar(

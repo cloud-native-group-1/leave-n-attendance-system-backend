@@ -1,4 +1,4 @@
-from sqlalchemy import String, Integer, ForeignKey, TIMESTAMP, func
+from sqlalchemy import String, Integer, ForeignKey, TIMESTAMP, func, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from datetime import datetime
 from .base import Base
@@ -8,8 +8,8 @@ class LeaveAttachment(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     leave_request_id: Mapped[int] = mapped_column(ForeignKey("leave_requests.id"), nullable=False)
-    file_name: Mapped[str] = mapped_column(String(255), nullable=False)
-    file_path: Mapped[str] = mapped_column(String(255), nullable=False)
+    file_name: Mapped[str] = mapped_column(Text, nullable=False)
+    file_path: Mapped[str] = mapped_column(Text, nullable=False)
     file_type: Mapped[str] = mapped_column(String(100), nullable=False)
     file_size: Mapped[int] = mapped_column(Integer, nullable=False)
     uploaded_at: Mapped[datetime] = mapped_column(TIMESTAMP, server_default=func.now(), nullable=False)

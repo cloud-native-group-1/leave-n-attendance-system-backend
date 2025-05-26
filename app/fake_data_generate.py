@@ -19,6 +19,8 @@ from database import SessionLocal
 
 fake = Faker()
 
+user_names = []
+
 def generate_fake_departments(db: Session, num_departments: int = 5):
     print("Clearing existing departments...")
     db.query(Department).delete()  # 清空 leave_quota 表格資料
@@ -44,7 +46,6 @@ def generate_fake_users(db: Session, num_users: int = 20):
     if not departments:
         raise ValueError("Departments must be generated before users.")
     
-    users = []  # 儲存所有生成的使用者
     for _ in range(num_users):
         department = fake.random_element(elements=departments)  # 隨機選擇部門
         password = get_password_hash('test')  # 隨機生成密碼
@@ -60,21 +61,79 @@ def generate_fake_users(db: Session, num_users: int = 20):
             password_hash=password,  # 密碼哈希
         )
         db.add(user)
-        users.append(user)
     
     db.commit()
 
-    # 設置上司與下屬關係
-    for user in users:
-        if user.is_manager:  # 如果是經理，隨機選擇下屬
-            subordinates = fake.random_elements(elements=users, length=fake.random_int(1, 5))
-            for subordinate in subordinates:
-                # 確保經理的ID和下屬的ID不相同
-                if subordinate.id != user.id:
-                    manager_entry = Manager(user_id=subordinate.id, manager_id=user.id)
-                    db.add(manager_entry)
+def reset_manager_relations(db: Session):
+    print("Clearing existing manager relations...")
+    db.query(Manager).delete()  # 清空 leave_quota 表格資料
+    db.commit()  # 提交刪除操作
+
+    print("Generating fake manager relations...")
+    users = db.query(User).all()
+    managers = [user for user in users if user.is_manager]  # 過濾出經理的使用者
+    available_subordinates = [user for user in users if not user.is_manager]  # 過濾出非經理的使用者
+    if not available_subordinates:
+        raise ValueError("No available users to assign as subordinates.")
+    if not managers:
+        raise ValueError("No managers available to assign subordinates.")
+    print(f"Managers: {[m.id for m in managers]}")
+    for manager in managers:
+        print("available_subordinates", [u.id for u in available_subordinates])
+        if len(available_subordinates) == 0:
+            print("No available subordinates left to assign.")
+            break
+
+        if len(available_subordinates) > 5:
+            subordinate_num = fake.random_int(1, 5)
+        else:
+            subordinate_num = fake.random_int(1, len(available_subordinates))
+        
+        subordinates = fake.random_elements(elements=available_subordinates, length=subordinate_num, unique=True)
+        for subordinate in subordinates:
+            manager_entry = Manager(user_id=subordinate.id, manager_id=manager.id)
+            db.add(manager_entry)
+            print(f"Removed {subordinate.id} from available subordinates")
+            available_subordinates.remove(subordinate)  # 從可用的下屬中移除已經分配的下屬
 
     db.commit()
+
+def reset_proxy_relations(db: Session):
+    print("Reset proxy relation in leave request")
+    leave_requests = db.query(LeaveRequest).order_by(LeaveRequest.id).all()
+    if not leave_requests:
+        raise ValueError("No leave requests available to assign proxy.")
+    manager_relations = db.query(Manager).all()
+    if not manager_relations:
+        raise ValueError("No manager relations available to assign proxy.")
+    
+    user_id = []
+    teams = {}
+    for relation in manager_relations:
+        if relation.manager_id not in teams:
+            teams[relation.manager_id] = []
+        teams[relation.manager_id].append(relation.user_id)
+    print("teams: ", teams)
+    for i in range(21):
+        curr_user = leave_requests[i].user_id
+        curr_approver = leave_requests[i].approver_id
+        print("curr_user: ", curr_user)
+        print("curr_approver: ", curr_approver)
+        print("teams[curr_approver]: ", teams[curr_approver])
+        while 1:
+            proxy = fake.random_element(elements=teams[curr_approver])
+            if proxy != curr_user:
+                leave_requests[i].proxy_user_id = proxy
+                print(f"Leave request {leave_requests[i].id} proxy user set to {proxy}")
+                db.add(leave_requests[i])
+                break
+
+    db.commit()
+         
+        
+
+
+
 
 def generate_fake_leave_types(db: Session, num_leave_types: int = 5):
     print("Generating fake leave types...")
@@ -175,26 +234,27 @@ def generate_fake_leave_requests(db: Session, num_requests: int = 20):
 
 def generate_fake_notifications(db: Session, num_notifications: int = 20):
     print("Clearing existing notifications...")
-    db.query(Notification).delete()  # 清空 leave_quota 表格資料
+    db.query(Notification).delete()  # 清空表格資料
     db.commit()  # 提交刪除操作
     
     print("Generating fake notifications...")
-    users = db.query(User).all()
+    leave_requests = db.query(LeaveRequest).all()
     
-    if not users:
+    if not leave_requests:
         raise ValueError("Please generate users data first.")
 
     for _ in range(num_notifications):
-        # 隨機選擇一個用戶
-        user = fake.random_element(elements=users)
+        # 隨機選擇一個請假請求
+        leave_request = fake.random_element(elements=leave_requests, unique=True)
+        user = leave_request.user_id
+        related_id = leave_request.id
 
         # 隨機生成相關欄位
         related_to = fake.word()  # 有50%的機率讓 related_to 為 None
-        related_id = fake.random_int(min=1, max=1000)  # 隨機生成一個整數
         is_read = fake.boolean()  # 隨機生成是否已讀的布林值
 
         notification = Notification(
-            user_id=user.id,
+            user_id=user,
             title=fake.sentence(),  # 隨機生成通知標題
             message=fake.text(),  # 隨機生成通知內容
             related_to=related_to,
@@ -276,11 +336,13 @@ def init_db():
     try:
         # generate_fake_departments(db)
         # generate_fake_users(db)
+        # reset_manager_relations(db)
+        reset_proxy_relations(db)
         # generate_fake_leave_types(db)
-        generate_fake_leave_quotas(db)
+        # generate_fake_leave_quotas(db)
         # generate_fake_leave_requests(db)
         # generate_fake_notifications(db)
-        generate_fake_leave_request_attachments(db)
+        # generate_fake_leave_request_attachments(db)
         # generate_fake_audit_logs(db)
         print("Fake data generation completed successfully.")
         
