@@ -117,7 +117,7 @@ def test_get_subordinates():
             "email": "coxlaurie@example.com",
             "department": {
                 "id": 14,
-                "name": "CI用測試" 
+                "name": "CI用測試"
             }
             }
         ]
