@@ -36,7 +36,7 @@ def request_leave(
         if manager_id != None:
             # then push a notification to his manager
             title = "有一筆新假單需要您的審核"
-            message =  str(current_user.first_name) + str(current_user.last_name) + "的假單需要您的審核"
+            message = str(current_user.last_name) + str(current_user.first_name) + "的假單需要您的審核"
             leave_request_id = result.id
             notification_crud.create_notifications(db, manager_id, title, message, leave_request_id, 'pending')
             logger.info(f"Successfully send notification to manager whose use_id is: {manager_id}")
@@ -448,7 +448,7 @@ def approve_leave_request(
         (applicant_first_name, applicant_last_name) = user_crud.get_user_name_by_id(db, applicant_id)
 
         title = "您已被指派為假單的職務代理人"
-        message = "您已被指派於" + str(start_date) + "至" + str(end_date) + "擔任" + str(applicant_first_name) + str(applicant_last_name) + "的職務代理人。"
+        message = "您已被指派於" + str(start_date) + "至" + str(end_date) + "擔任" + str(applicant_last_name) + str(applicant_first_name) + "的職務代理人。"
         notification_crud.create_notifications(db, proxy_user_id, title, message, leave_request_id, 'proxy')
         logger.info(f"Successfully send notification to proxy user whose use_id is: {proxy_user_id}")
 
