@@ -100,13 +100,14 @@ def create_notifications(
         receiver_id: int,
         title: str,
         message: str,
-        leave_request_id: int
+        leave_request_id: int,
+        related_to: str = "leave_request"
 ):
     new_notification = Notification(
         user_id = receiver_id,
         title = title,
         message = message,
-        related_to = "leave_request",
+        related_to = related_to,
         related_id = leave_request_id,
         is_read = False
     ) 
