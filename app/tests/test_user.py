@@ -41,8 +41,8 @@ def test_get_my_profile():
         "last_name": "Ware",
         "email": "carolyn50@example.com",
         "department": {
-            "id": 6,
-            "name": "Scott, Castillo and Mccann"
+            "id": 14,
+            "name": "CI用測試"
         },
         "position": "Press photographer",
         "is_manager": False,
@@ -116,8 +116,8 @@ def test_get_subordinates():
             "position": "Water quality scientist",
             "email": "coxlaurie@example.com",
             "department": {
-                "id": 14,
-                "name": "CI用測試"
+                "id": 10,
+                "name": "Hurley, Marshall and Rodgers"
             }
             }
         ]

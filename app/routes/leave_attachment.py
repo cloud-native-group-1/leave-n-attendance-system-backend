@@ -3,9 +3,10 @@ from sqlalchemy.orm import Session
 from ..database import get_db
 from ..crud import leave_attachment as leave_attachment_crud
 from ..models.leave_request import LeaveRequest
+from ..models.leave_request_attachment import LeaveAttachment
 from ..utils.gcs import upload_file_to_gcs
 from ..utils.dependencies import get_current_user
-from ..schemas.leave_attachment import LeaveAttachmentOut
+from ..schemas.leave_attachment import LeaveAttachmentOut, LeaveAttachmentResult, LeaveAttachmentListResult
 from ..models.user import User
 
 router = APIRouter(
@@ -63,4 +64,36 @@ async def upload_attachment(
         "file_type": attachment.file_type,
         "file_size": attachment.file_size,
         "uploaded_at": attachment.uploaded_at.isoformat()
+    }
+@router.get("/{leave_request_id}/attachments", response_model=LeaveAttachmentListResult, status_code=status.HTTP_200_OK)
+def get_attachments_for_leave_request(
+    leave_request_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    # 查詢該請假申請的附件
+    leave_request = db.query(LeaveRequest).filter_by(id=leave_request_id).first()
+    print(f"Fetching attachments for leave request ID: {leave_request_id}")
+    if not leave_request:
+        raise HTTPException(status_code=404, detail="Leave request not found")
+    
+    # 查詢該請假申請下的所有附件
+    attachments = db.query(LeaveAttachment).filter_by(leave_request_id=leave_request_id).all()
+
+    # 將附件轉換為回應格式
+    attachment_results = []
+    for attachment in attachments:
+        attachment_results.append({
+            "id": attachment.id,
+            "leave_request_id": leave_request_id,
+            "file_name": attachment.file_name,
+            "file_type": attachment.file_type,
+            "file_size": attachment.file_size,
+            "file_path": attachment.file_path,
+            "uploaded_at": attachment.uploaded_at.isoformat()
+        })
+    
+    return {
+        "attachments": attachment_results,
+        "total_count": len(attachment_results)
     }

@@ -1,4 +1,4 @@
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import extract
 from datetime import date, timedelta
 from typing import List, Dict, Optional

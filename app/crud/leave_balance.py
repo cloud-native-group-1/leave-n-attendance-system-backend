@@ -1,4 +1,4 @@
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func
 from datetime import datetime
 
@@ -12,10 +12,10 @@ from ..schemas.leave_balance import LeaveBalanceResponse, LeaveBalanceItem, Leav
 def get_leave_balances(db: Session, user_id: int) -> LeaveBalanceResponse:
     year = datetime.now().year
     
-    # 查出該使用者的所有假別配額
+    # 查出該使用者的所有假別配額，并预载 leave_type 数据
     quotas = (
         db.query(LeaveQuota)
-        .join(LeaveType, LeaveQuota.leave_type_id == LeaveType.id)
+        .options(joinedload(LeaveQuota.leave_type))
         .filter(LeaveQuota.user_id == user_id, LeaveQuota.year == year)
         .all()
     )
@@ -26,7 +26,15 @@ def get_leave_balances(db: Session, user_id: int) -> LeaveBalanceResponse:
     for quota_entry in quotas:
         leave_type = quota_entry.leave_type
 
-        # 查詢該假別的已核准請假紀錄
+        # 使用更高效的查询計算已使用天數
+        used_days = db.query(func.sum(LeaveRequest.days_count)).filter(
+            LeaveRequest.user_id == user_id,
+            LeaveRequest.leave_type_id == leave_type.id,
+            func.extract('year', LeaveRequest.start_date) == year,
+            LeaveRequest.status == 'approved'
+        ).scalar() or 0
+
+        # 获取请假记录明细
         approved_requests = (
             db.query(LeaveRequest)
             .filter(
@@ -38,7 +46,6 @@ def get_leave_balances(db: Session, user_id: int) -> LeaveBalanceResponse:
             .all()
         )
 
-        used_days = sum([r.days_count for r in approved_requests])
         remaining_days = quota_entry.quota - used_days
 
         balances.append(LeaveBalanceItem(

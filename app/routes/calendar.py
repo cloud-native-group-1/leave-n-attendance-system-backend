@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from typing import Optional
 import logging
 from ..crud import calendar as calendar_crud
@@ -45,7 +45,7 @@ def get_team_calendar(
         member_count = len(team_members) if team_members else 0
         logger.debug(f"Found {member_count} team members for manager {current_user.id}")
         
-        # Get calendar data
+        # Get calendar data - this already uses joinedload in the CRUD function
         calendar_data = calendar_crud.get_team_calendar(
             db=db,
             team_member_ids=team_member_ids,

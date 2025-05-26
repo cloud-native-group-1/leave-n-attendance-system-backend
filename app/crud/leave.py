@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import func
+from sqlalchemy import func, join
 from typing import Optional
 from fastapi import HTTPException
 from datetime import datetime, date
@@ -43,7 +43,7 @@ def create_leave_request(db: Session, user_id: int, data: LeaveRequestCreate):
     if days_requested <= 0:
         raise ValueError("Invalid date: End_date should be after Start_day") 
 
-    # get leave_type
+    # get leave_type with a single query
     leave_type = db.query(LeaveType).filter(LeaveType.id == data.leave_type_id).first()
     if not leave_type: 
         raise ValueError("Invalid leave_type_id")
@@ -62,19 +62,14 @@ def create_leave_request(db: Session, user_id: int, data: LeaveRequestCreate):
     if not quota:
         raise ValueError("No leave quota found for this leave type")
     
-    # calculate remaining quota
-    approved_requests = (
-        db.query(LeaveRequest)
-        .filter(
-            LeaveRequest.user_id == user_id,
-            LeaveRequest.leave_type_id == data.leave_type_id,
-            func.extract('year', LeaveRequest.start_date) == current_year,
-            LeaveRequest.status == 'approved'
-        )
-        .all()
-    )
-
-    used_days = sum([r.days_count for r in approved_requests])
+    # calculate remaining quota - use optimized query with func.sum
+    used_days = db.query(func.sum(LeaveRequest.days_count)).filter(
+        LeaveRequest.user_id == user_id,
+        LeaveRequest.leave_type_id == data.leave_type_id,
+        func.extract('year', LeaveRequest.start_date) == current_year,
+        LeaveRequest.status == 'approved'
+    ).scalar() or 0
+    
     remaining_days = quota.quota - used_days
     if remaining_days < days_requested:
         raise ValueError(f"Not enough leave balance. Remaining: {remaining_days}, Requested: {days_requested}")
@@ -124,6 +119,7 @@ def get_leave_requests_for_user(
     if status and status not in ALLOWED_STATUSES:
         raise ValueError(f"Invalid status: '{status}'. Must be one of {ALLOWED_STATUSES}")
     
+    # Use eager loading with joinedload to fetch related data in a single query
     query = db.query(LeaveRequest).options(
         joinedload(LeaveRequest.leave_type),
         joinedload(LeaveRequest.proxy_user),
@@ -246,14 +242,7 @@ def get_team_leave_requests(
     }
 
 def get_leave_request_by_id(db: Session, leave_request_id: int) -> LeaveRequestDetail:
-    leave_request = db.query(LeaveRequest) \
-        .options(
-            joinedload(LeaveRequest.user),
-            joinedload(LeaveRequest.proxy_user),
-            joinedload(LeaveRequest.approver),
-            joinedload(LeaveRequest.leave_type)
-        ) \
-        .filter(LeaveRequest.id == leave_request_id).first()
+    leave_request = db.query(LeaveRequest).filter(LeaveRequest.id == leave_request_id).first()
     if not leave_request:
         raise HTTPException(status_code=404, detail="Leave request not found")
 
@@ -321,14 +310,18 @@ def get_detail_from_leave_request_by_id(db: Session, leave_request_id: int) -> i
     return leave_request
 
 def approve_leave_request(db: Session, leave_request_id: int, approver_id: int) -> LeaveRequestApprovalResponse:
-    leave_request = db.query(LeaveRequest).filter(LeaveRequest.id == leave_request_id).first()
+    # Use joinedload to eagerly load the user relationship
+    leave_request = db.query(LeaveRequest).options(
+        joinedload(LeaveRequest.user)
+    ).filter(LeaveRequest.id == leave_request_id).first()
+    
     if not leave_request:
         raise HTTPException(status_code=404, detail="Leave request not found")
     
-
     if leave_request.status != "pending":
         raise ValueError("Can only approve pending leave requests")
     
+    # Load approver with one query
     approver = db.query(User).filter(User.id == approver_id).first()
     if not approver or not approver.is_manager:
         raise PermissionError("Only managers can approve leave requests")
@@ -358,7 +351,11 @@ def approve_leave_request(db: Session, leave_request_id: int, approver_id: int) 
     )
 
 def reject_leave_request(db: Session, leave_request_id: int, approver_id: int, rejection_reason: str) -> LeaveRequestRejectionResponse:
-    leave_request = db.query(LeaveRequest).filter(LeaveRequest.id == leave_request_id).first()
+    # Use joinedload to eagerly load the user relationship
+    leave_request = db.query(LeaveRequest).options(
+        joinedload(LeaveRequest.user)
+    ).filter(LeaveRequest.id == leave_request_id).first()
+    
     if not leave_request:
         raise HTTPException(status_code=404, detail="Leave request not found")
     
