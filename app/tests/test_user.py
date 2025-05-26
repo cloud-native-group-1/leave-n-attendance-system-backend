@@ -49,7 +49,13 @@ def test_get_my_profile():
         "manager": {
             "id": 19,
             "first_name": "Scott",
-            "last_name": "Burton"
+            "last_name": "Burton",
+            "email": "jessicavalentine@example.org",
+            "department": {
+            "id": 14,
+            "name": "CI用測試"
+            },
+            "position": "Hydrogeologist"
         },
         "hire_date": "2023-07-16"
     }
@@ -147,7 +153,13 @@ def test_get_user_by_id():
         "manager": {
             "id": 19,
             "first_name": "Scott",
-            "last_name": "Burton"
+            "last_name": "Burton",
+            "email": "jessicavalentine@example.org",
+            "department": {
+            "id": 14,
+            "name": "CI用測試"
+            },
+            "position": "Hydrogeologist"
         },
         "hire_date": "2023-07-16"
     }
