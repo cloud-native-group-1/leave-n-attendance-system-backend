@@ -116,8 +116,8 @@ def test_get_subordinates():
             "position": "Water quality scientist",
             "email": "coxlaurie@example.com",
             "department": {
-                "id": 10,
-                "name": "Hurley, Marshall and Rodgers"
+                "id": 14,
+                "name": "CI用測試"
             }
             }
         ]
