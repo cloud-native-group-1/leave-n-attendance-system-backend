@@ -6,7 +6,7 @@ from ..models.leave_request import LeaveRequest
 from ..models.leave_request_attachment import LeaveAttachment
 from ..utils.gcs import upload_file_to_gcs
 from ..utils.dependencies import get_current_user
-from ..schemas.leave_attachment import LeaveAttachmentOut, LeaveAttachmentResult
+from ..schemas.leave_attachment import LeaveAttachmentOut, LeaveAttachmentResult, LeaveAttachmentListResult
 from ..models.user import User
 
 router = APIRouter(
@@ -65,7 +65,7 @@ async def upload_attachment(
         "file_size": attachment.file_size,
         "uploaded_at": attachment.uploaded_at.isoformat()
     }
-@router.get("/{leave_request_id}/attachments", response_model=LeaveAttachmentResult, status_code=status.HTTP_200_OK)
+@router.get("/{leave_request_id}/attachments", response_model=LeaveAttachmentListResult, status_code=status.HTTP_200_OK)
 def get_attachments_for_leave_request(
     leave_request_id: int,
     db: Session = Depends(get_db),
@@ -78,18 +78,22 @@ def get_attachments_for_leave_request(
         raise HTTPException(status_code=404, detail="Leave request not found")
     
     # 查詢該請假申請下的所有附件
-    attachment = db.query(LeaveAttachment).filter_by(leave_request_id=leave_request_id).first()
+    attachments = db.query(LeaveAttachment).filter_by(leave_request_id=leave_request_id).all()
 
-    # 如果沒有找到附件，回傳 404
-    if not attachment:
-        raise HTTPException(status_code=404, detail="No attachment found for this leave request")
+    # 將附件轉換為回應格式
+    attachment_results = []
+    for attachment in attachments:
+        attachment_results.append({
+            "id": attachment.id,
+            "leave_request_id": leave_request_id,
+            "file_name": attachment.file_name,
+            "file_type": attachment.file_type,
+            "file_size": attachment.file_size,
+            "file_path": attachment.file_path,
+            "uploaded_at": attachment.uploaded_at.isoformat()
+        })
     
     return {
-        "id": attachment.id,
-        "leave_request_id": leave_request_id,
-        "file_name": attachment.file_name,
-        "file_type": attachment.file_type,
-        "file_size": attachment.file_size,
-        "file_path": attachment.file_path,
-        "uploaded_at": attachment.uploaded_at.isoformat()
+        "attachments": attachment_results,
+        "total_count": len(attachment_results)
     }

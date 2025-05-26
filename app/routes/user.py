@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from ..crud import user as user_crud
 from ..schemas.user import UserOut, TeamListResponse
 from ..utils.dependencies import get_current_user
@@ -24,6 +24,7 @@ def get_my_profile(request: Request, current_user: User = Depends(get_current_us
     user_id = current_user.id
     department_id = current_user.department_id
 
+    # Get manager with department in a single query
     logger.debug(f"Getting manager for user {user_id}")
     manager_id = user_crud.get_manager_id(db, user_id)
     logger.debug(f"Manager ID for user {user_id}: {manager_id}")
@@ -31,18 +32,31 @@ def get_my_profile(request: Request, current_user: User = Depends(get_current_us
     # 處理 manager
     manager_dict = None
     if manager_id is not None:
+        # Use the optimized get_manager function that preloads department
         manager = user_crud.get_manager(db, manager_id)
-        if manager:
+        if manager and manager.department:
             manager_dict = {
                 "id": manager.id,
                 "first_name": manager.first_name,
-                "last_name": manager.last_name
+                "last_name": manager.last_name,
+                "email": manager.email,
+                "department": {
+                    "id": manager.department.id,
+                    "name": manager.department.name
+                },
+                "position": manager.position
             }
-            logger.debug(f"Manager info: {manager_dict}")
+        logger.debug(f"Manager info: {manager_dict}")
 
-    # 處理 department
+    # 處理 department - user should already have department loaded from get_current_user
     department_dict = None
-    if department_id is not None:
+    if department_id is not None and current_user.department:
+        department_dict = {
+            "id": current_user.department.id,
+            "name": current_user.department.name
+        }
+    elif department_id is not None:
+        # Fallback to separate query if needed
         department = user_crud.get_department(db, department_id)
         if department:
             department_dict = {
@@ -79,6 +93,7 @@ def get_teammate(request: Request, current_user: User = Depends(get_current_user
     
     manager_id = user_crud.get_manager_id(db, current_user.id)
 
+    # This already uses joinedload for department in the CRUD function
     members = user_crud.get_team_members(db, manager_id, current_user.id)
     
     # 記錄團隊成員信息，但避免記錄敏感信息
@@ -104,6 +119,7 @@ def get_subordinates(request: Request, current_user: User = Depends(get_current_
         logger.warning(f"Non-manager user {current_user.email} (ID: {current_user.id}) attempted to access team list")
         raise HTTPException(status_code=403, detail="Only managers can access this resource.")
     
+    # This already uses joinedload for department in the CRUD function
     members = user_crud.get_team_members(db, current_user.id, current_user.id)
     
     # 記錄團隊成員信息，但避免記錄敏感信息
@@ -139,6 +155,7 @@ def get_user_by_id(user_id: int, request: Request, current_user: User = Depends(
     client_ip = request.client.host
     logger.info(f"User {current_user.email} (ID: {current_user.id}) requesting user profile for ID: {user_id} from {client_ip}")
     
+    # This uses joinedload to preload department in a single query
     user = user_crud.get_user_by_id(db, user_id)
     if not user:
         logger.warning(f"User with ID {user_id} not found")
@@ -146,21 +163,33 @@ def get_user_by_id(user_id: int, request: Request, current_user: User = Depends(
     
     department_id = user.department_id
     
-    # 處理 manager
+    # 處理 manager - get manager with department in one query
     manager_id = user_crud.get_manager_id(db, user_id)
     manager_dict = None
     if manager_id is not None:
         manager = user_crud.get_manager(db, manager_id)
-        if manager:
+        if manager and manager.department:
             manager_dict = {
                 "id": manager.id,
                 "first_name": manager.first_name,
-                "last_name": manager.last_name
+                "last_name": manager.last_name,
+                "email": manager.email,
+                "department": {
+                    "id": manager.department.id,
+                    "name": manager.department.name
+                },
+                "position": manager.position
             }
     
-    # 處理 department
+    # 處理 department - should already be loaded from the get_user_by_id call
     department_dict = None
-    if department_id is not None:
+    if department_id is not None and user.department:
+        department_dict = {
+            "id": user.department.id,
+            "name": user.department.name
+        }
+    elif department_id is not None:
+        # Fallback to separate query if needed
         department = user_crud.get_department(db, department_id)
         if department:
             department_dict = {

@@ -38,7 +38,7 @@ def request_leave(
             title = "有一筆新假單需要您的審核"
             message =  str(current_user.first_name) + str(current_user.last_name) + "的假單需要您的審核"
             leave_request_id = result.id
-            notification_crud.create_notifications(db, manager_id, title, message, leave_request_id)
+            notification_crud.create_notifications(db, manager_id, title, message, leave_request_id, 'pending')
             logger.info(f"Successfully send notification to manager whose use_id is: {manager_id}")
         else:
             logger.warning(f"Cannot find the manager of current user whose user_id: {current_user.id}")
@@ -436,7 +436,7 @@ def approve_leave_request(
         title = "您的假單已被主管批准!"
         message = "您的假單(id: " + str(l_id) + ")已被批准!" 
         leave_request_id = leave_request_id 
-        notification_crud.create_notifications(db, applicant_id, title, message, leave_request_id)
+        notification_crud.create_notifications(db, applicant_id, title, message, leave_request_id, 'approval')
         logger.info(f"Successfully send notification to applicant whose use_id is: {applicant_id}")
 
         # push a notification to proxy user of the leave request
@@ -449,7 +449,7 @@ def approve_leave_request(
 
         title = "您已被指派為假單的職務代理人"
         message = "您已被指派於" + str(start_date) + "至" + str(end_date) + "擔任" + str(applicant_first_name) + str(applicant_last_name) + "的職務代理人。"
-        notification_crud.create_notifications(db, proxy_user_id, title, message, leave_request_id)
+        notification_crud.create_notifications(db, proxy_user_id, title, message, leave_request_id, 'proxy')
         logger.info(f"Successfully send notification to proxy user whose use_id is: {proxy_user_id}")
 
         return result
@@ -487,7 +487,7 @@ def reject_leave_request(
         title = "您的假單已被否決"
         message = "您的假單(id: " + str(l_id) + ")已被否決" 
         leave_request_id = leave_request_id 
-        notification_crud.create_notifications(db, applicant_id, title, message, leave_request_id)
+        notification_crud.create_notifications(db, applicant_id, title, message, leave_request_id, 'rejection')
         logger.info(f"Successfully send notification to applicant whose use_id is: {applicant_id}")
 
         return result
