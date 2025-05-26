@@ -1,0 +1,17 @@
+[run]
+omit =
+    app/tests/*
+    migrations/*
+    */__init__.py
+    app/t_db.py
+    app/t_gcp_bucket.py
+    app/demo_request_data_generate.py
+    app/demo_user_data_generate.py
+    app/er_graph.py
+    app/fake_data_generate.py
+
+[report]
+exclude_lines =
+    pragma: no cover
+    if __name__ == .__main__.:
+    raise NotImplementedError
