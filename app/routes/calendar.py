@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from typing import Optional
 import logging
 from ..crud import calendar as calendar_crud
@@ -37,11 +37,11 @@ def get_team_calendar(
         if not 1 <= month <= 12:
             raise ValueError("Month must be between 1 and 12")
         
-        # Get team members
+        # Get team members - this already uses joinedload in the CRUD function
         team_members = user_crud.get_team_members(db, current_user.id)
         team_member_ids = [member.id for member in team_members]
         
-        # Get calendar data
+        # Get calendar data - this already uses joinedload in the CRUD function
         calendar_data = calendar_crud.get_team_calendar(
             db=db,
             team_member_ids=team_member_ids,

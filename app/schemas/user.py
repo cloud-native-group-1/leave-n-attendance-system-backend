@@ -13,6 +13,10 @@ class ManagerOut(BaseModel):
     id: int
     first_name: str
     last_name: str
+    email: str
+    department: DepartmentOut
+    position: str
+
 class UserLoginOut(BaseModel):
     id: int
     employee_id: str

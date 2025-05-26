@@ -1,4 +1,4 @@
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from typing import Optional, Dict, Any
 from ..models.notification import Notification
 from ..schemas.notification import NotificationBase, PaginationMeta, NotificationReadResponse, NotificationReadAllResponse

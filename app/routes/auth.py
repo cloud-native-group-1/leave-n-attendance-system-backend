@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Body, Request
 from fastapi.responses import JSONResponse
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from ..schemas.user import UserLogin, Token
 from ..crud import user as user_crud
 from ..utils.auth import create_access_token
@@ -30,16 +30,19 @@ async def login(
     client_ip = request.client.host
     logger.info(f"Login attempt from {client_ip} with username: {login_data.username}")
     
+    # authenticate_user already loads user in a single query
     current_user = user_crud.authenticate_user(db, login_data.username, login_data.password)
     if not current_user:
         logger.warning(f"Failed login attempt for {login_data.username} from {client_ip}")
         raise HTTPException(status_code=401, detail="Invalid credentials")
     
     user_id = current_user.id
-    department = user_crud.get_department(db, user_id)
+    # Use the optimized get_user_by_id function to get user with department in a single query
+    user_with_department = user_crud.get_user_by_id(db, user_id)
+    department = user_with_department.department if user_with_department and hasattr(user_with_department, 'department') else None
     
     # 記錄用戶詳細信息，使用安全序列化
-    logger.debug(f"User details: ID: {user_id}, Email: {current_user.email}, Department: {object_to_dict(department)}")
+    logger.debug(f"User details: ID: {user_id}, Email: {current_user.email}, Department: {department}")
     
     user = {
         "id": user_id,
@@ -47,7 +50,10 @@ async def login(
         "first_name": current_user.first_name,
         "last_name": current_user.last_name,
         "email": current_user.email,
-        "department":department,
+        "department": {
+            "id": department.id,
+            "name": department.name
+        } if department else None,
         "position": current_user.position,
         "is_manager": current_user.is_manager        
     }
@@ -88,3 +94,12 @@ def logout(request: Request):
     
     logger.info(f"User logged out from {client_ip}")
     return response
+
+# Fix missing function that was previously used
+def object_to_dict(obj):
+    if obj is None:
+        return None
+    if hasattr(obj, '__dict__'):
+        return obj.__dict__
+    else:
+        return str(obj)

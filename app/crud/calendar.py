@@ -1,4 +1,4 @@
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import extract
 from datetime import date
 from typing import List, Dict
@@ -15,10 +15,13 @@ def get_team_calendar(
     month: int
 ) -> TeamCalendarResponse:
     # Get all approved leave requests for team members in the specified month
+    # Use eager loading to load user and leave_type in a single query
     leave_requests = (
         db.query(LeaveRequest)
-        .join(User, LeaveRequest.user_id == User.id)
-        .join(LeaveType, LeaveRequest.leave_type_id == LeaveType.id)
+        .options(
+            joinedload(LeaveRequest.user),
+            joinedload(LeaveRequest.leave_type)
+        )
         .filter(
             LeaveRequest.user_id.in_(team_member_ids),
             LeaveRequest.status == "approved",
