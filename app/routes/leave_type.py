@@ -13,7 +13,7 @@ router = APIRouter(
 )
 
 
-@router.get("/", response_model=List[LeaveTypeSchema])
+@router.get("", response_model=List[LeaveTypeSchema])
 def get_leave_types(db: Session = Depends(get_db)):
     """
     Get all leave types
