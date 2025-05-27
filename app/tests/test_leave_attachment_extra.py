@@ -13,3 +13,12 @@ def test_upload_attachment_invalid_leave():
     assert response.status_code in (404, 403)
 
 # Add more tests for valid upload if you have a valid leave_request_id
+
+def test_get_attachments_for_leave_request():
+    cookie = login_as("carolyn50@example.com", "test")
+    response = client.get("/api/leave-requests/138/attachments", cookies=cookie)
+    assert response.status_code == 200
+    data = response.json()
+    assert "attachments" in data
+    assert "total_count" in data
+    assert isinstance(data["attachments"], list)
